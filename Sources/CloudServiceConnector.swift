@@ -7,8 +7,18 @@
 
 import Foundation
 import OAuthSwift
+#if canImport(UIKit)
 import class UIKit.UIViewController
 import class UIKit.UIScreen
+#elseif canImport(AppKit)
+import class AppKit.NSViewController
+#endif
+
+#if canImport(UIKit)
+public typealias PlatformController = UIViewController
+#elseif canImport(AppKit)
+public typealias PlatformController = NSViewController
+#endif
 
 public protocol CloudServiceOAuth {
     
@@ -70,7 +80,7 @@ public class CloudServiceConnector: CloudServiceOAuth {
     }
     
     
-    public func connect(viewController: UIViewController,
+    public func connect(viewController: PlatformController,
                         completion: @escaping (Result<OAuthSwift.TokenSuccess, Error>) -> Void) {
         let oauth = OAuth2Swift(consumerKey: appId, consumerSecret: appSecret, authorizeUrl: authorizeUrl, accessTokenUrl: accessTokenUrl, responseType: responseType, contentType: nil)
         oauth.allowMissingStateCheck = true
@@ -125,11 +135,15 @@ public class BaiduPanConnector: CloudServiceConnector {
     
     /// The OAuth2 url, which is `https://openapi.baidu.com/oauth/2.0/authorize`.
     public override var authorizeUrl: String {
+#if canImport(UIKit)
         if UIScreen.main.traitCollection.userInterfaceIdiom == .pad {
             return "https://openapi.baidu.com/oauth/2.0/authorize?display=pad&force_login=1"
         } else {
             return "https://openapi.baidu.com/oauth/2.0/authorize?display=mobile&force_login=1"
         }
+#else
+        return "https://openapi.baidu.com/oauth/2.0/authorize?display=pc&force_login=1"
+#endif
     }
     
     /// The access token url, which is `https://openapi.baidu.com/oauth/2.0/token`.
