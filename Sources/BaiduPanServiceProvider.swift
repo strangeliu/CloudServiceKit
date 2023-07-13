@@ -185,7 +185,7 @@ public class BaiduPanServiceProvider: CloudServiceProvider {
             switch response.result {
             case .success(let result):
                 if let json = result.json as? [String: Any], let name = json["baidu_name"] as? String {
-                    let account = CloudUser(username: name, json: json)
+                    let account = CloudUser(username: name, avatarURL: (json["avatar_url"] as? String).flatMap(URL.init(string:)), json: json)
                     completion(.success(account))
                 } else {
                     completion(.failure(CloudServiceError.responseDecodeError(result)))

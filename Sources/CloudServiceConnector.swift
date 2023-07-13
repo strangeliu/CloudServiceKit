@@ -28,6 +28,15 @@ public protocol CloudServiceOAuth {
 
 }
 
+class CancelHanlder: @unchecked Sendable {
+    
+    var handler: (() -> Void)?
+    
+    init() {
+        
+    }
+}
+
 /// The base connector provided by CloudService.
 /// CloudServiceKit provides a default connector for each cloud service, such as `DropboxConnector`.
 /// You can implement your own connector if you want customizations.
@@ -79,23 +88,35 @@ public class CloudServiceConnector: CloudServiceOAuth {
         self.state = state
     }
     
-    
-    public func connect(viewController: PlatformController,
-                        completion: @escaping (Result<OAuthSwift.TokenSuccess, Error>) -> Void) {
+    @discardableResult
+    public func connect(completion: @escaping (Result<OAuthSwift.TokenSuccess, Error>) -> Void) -> OAuthSwiftRequestHandle? {
         let oauth = OAuth2Swift(consumerKey: appId, consumerSecret: appSecret, authorizeUrl: authorizeUrl, accessTokenUrl: accessTokenUrl, responseType: responseType, contentType: nil)
         oauth.allowMissingStateCheck = true
-        #if os(iOS)
-        oauth.authorizeURLHandler = SafariURLHandler(viewController: viewController, oauthSwift: oauth)
-        #endif
         self.oauth = oauth
-        _ = oauth.authorize(withCallbackURL: URL(string: callbackUrl), scope: scope, state: state, parameters: authorizeParameters, completionHandler: { result in
+        return oauth.authorize(withCallbackURL: URL(string: callbackUrl), scope: scope, state: state, parameters: authorizeParameters) { result in
             switch result {
             case .success(let token):
                 completion(.success(token))
             case .failure(let error):
                 completion(.failure(error))
             }
-        })
+        }
+    }
+    
+    public func connect() async throws -> OAuthSwift.TokenSuccess {
+        let cancelHandler = CancelHanlder()
+        return try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                let handler = self.connect { result in
+                    continuation.resume(with: result)
+                }
+                cancelHandler.handler = {
+                    handler?.cancel()
+                }
+            }
+        } onCancel: {
+            cancelHandler.handler?()
+        }
     }
     
     public func renewToken(with refreshToken: String, completion: @escaping (Result<OAuthSwift.TokenSuccess, Error>) -> Void) {

@@ -336,3 +336,35 @@ struct ISO3601DateFormatter {
             ?? milisecondsDateFormatter.date(from: dateString))
     }
 }
+
+// concurrency support
+extension CloudServiceProvider {
+    
+    public func contentsOfDirectory(_ directory: CloudItem) async throws -> [CloudItem] {
+        try await withCheckedThrowingContinuation { continuation in
+            contentsOfDirectory(directory) { result in
+                continuation.resume(with: result)
+            }
+        }
+    }
+    
+    public func attributesOfItem(item: CloudItem) async throws -> CloudItem {
+        try await withCheckedThrowingContinuation { continuation in
+            attributesOfItem(item) { result in
+                continuation.resume(with: result)
+            }
+        }
+    }
+    
+    public func attributesOfItem(at path: String) async throws -> CloudItem {
+        try await attributesOfItem(item: CloudItem(id: "", name: "", path: path, isDirectory: false))
+    }
+    
+    public func fetchUserInfo() async throws -> CloudUser {
+        try await withCheckedThrowingContinuation { continuation in
+            getCurrentUserInfo { result in
+                continuation.resume(with: result)
+            }
+        }
+    }
+}

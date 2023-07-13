@@ -76,13 +76,16 @@ public class CloudItem: Hashable {
 public struct CloudUser {
     
     /// The account user name of cloud service. The value is usually the display name.
-    public var username: String
+    public let username: String
+    
+    public let avatarURL: URL?
     
     /// The origin json response data of the user information.
-    public var json: [String: Any]
+    public let json: [String: Any]
     
-    public init(username: String, json: [String: Any]) {
+    public init(username: String, avatarURL: URL? = nil, json: [String: Any]) {
         self.username = username
+        self.avatarURL = avatarURL
         self.json = json
     }
 }
