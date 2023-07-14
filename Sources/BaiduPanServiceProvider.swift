@@ -633,3 +633,22 @@ extension BaiduPanServiceProvider {
     }
     
 }
+
+extension BaiduPanServiceProvider {
+    
+    public func downloadLink(of item: CloudItem) async throws -> URL {
+        try await withCheckedThrowingContinuation { continuation in
+            downloadLink(of: item) { result in
+                continuation.resume(with: result)
+            }
+        }
+    }
+    
+    public func streamingVideo(of item: CloudItem) async throws -> URLRequest {
+        try await withCheckedThrowingContinuation { continuation in
+            streamingVideo(item: item) { result in
+                continuation.resume(with: result)
+            }
+        }
+    }
+}
