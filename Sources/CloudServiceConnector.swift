@@ -7,9 +7,10 @@
 
 import Foundation
 import OAuthSwift
+import CryptoKit
+import AuthenticationServices
 #if canImport(UIKit)
-import class UIKit.UIViewController
-import class UIKit.UIScreen
+import UIKit
 #elseif canImport(AppKit)
 import class AppKit.NSViewController
 #endif
@@ -57,6 +58,8 @@ public class CloudServiceConnector: CloudServiceOAuth {
     
     public var responseType: String
     
+    public weak var presentationContextProvider: ASWebAuthenticationPresentationContextProviding?
+    
     /// The appId or appKey of your service.
     let appId: String
     
@@ -88,12 +91,37 @@ public class CloudServiceConnector: CloudServiceOAuth {
         self.state = state
     }
     
+    func generateCodeVerifier(length: Int) -> String {
+        var data = Data(count: length)
+        let result = data.withUnsafeMutableBytes { mutableBytes in
+            SecRandomCopyBytes(kSecRandomDefault, length, mutableBytes.baseAddress!)
+        }
+
+        if result == errSecSuccess {
+            return data.base64EncodedString().replacingOccurrences(of: "+", with: "-").replacingOccurrences(of: "/", with: "_").replacingOccurrences(of: "=", with: "")
+        } else {
+            return ""
+        }
+    }
+    
+    func generateCodeChallenge(from codeVerifier: String) -> String {
+        let codeVerifierData = Data(codeVerifier.utf8)
+        let codeVerifierHash = SHA256.hash(data: codeVerifierData)
+        let codeChallenge = Data(codeVerifierHash).base64EncodedString().replacingOccurrences(of: "+", with: "-").replacingOccurrences(of: "/", with: "_").trimmingCharacters(in: CharacterSet(charactersIn: "="))
+        return codeChallenge
+    }
+    
     @discardableResult
     public func connect(completion: @escaping (Result<OAuthSwift.TokenSuccess, Error>) -> Void) -> OAuthSwiftRequestHandle? {
         let oauth = OAuth2Swift(consumerKey: appId, consumerSecret: appSecret, authorizeUrl: authorizeUrl, accessTokenUrl: accessTokenUrl, responseType: responseType, contentType: nil)
+#if os(iOS)
+        oauth.authorizeURLHandler = WebAuthenticationURLHandler(callbackUrlScheme: callbackUrl, presentationContextProvider: presentationContextProvider, prefersEphemeralWebBrowserSession: false)
+#endif
         oauth.allowMissingStateCheck = true
         self.oauth = oauth
-        return oauth.authorize(withCallbackURL: URL(string: callbackUrl), scope: scope, state: state, parameters: authorizeParameters) { result in
+        let codeVerifier = generateCodeVerifier(length: 64)
+        let challenge = generateCodeChallenge(from: codeVerifier)
+        return oauth.authorize(withCallbackURL: URL(string: callbackUrl)!, scope: scope, state: state, codeChallenge: challenge, codeVerifier: codeVerifier, parameters: authorizeParameters) { result in
             switch result {
             case .success(let token):
                 completion(.success(token))
@@ -103,6 +131,7 @@ public class CloudServiceConnector: CloudServiceOAuth {
         }
     }
     
+    @MainActor
     public func connect() async throws -> OAuthSwift.TokenSuccess {
         let cancelHandler = CancelHanlder()
         return try await withTaskCancellationHandler {
@@ -261,5 +290,16 @@ public class PCloudConnector: CloudServiceConnector {
     public override func renewToken(with refreshToken: String, completion: @escaping (Result<OAuthSwift.TokenSuccess, Error>) -> Void) {
         // pCloud OAuth does not respond with a refresh token, so renewToken is unsupported.
         completion(.failure(CloudServiceError.unsupported))
+    }
+}
+
+extension CloudServiceConnector {
+    
+    public func renewToken(with refreshToken: String) async throws -> OAuthSwift.TokenSuccess {
+        try await withCheckedThrowingContinuation { continuation in
+            renewToken(with: refreshToken) { result in
+                continuation.resume(with: result)
+            }
+        }
     }
 }

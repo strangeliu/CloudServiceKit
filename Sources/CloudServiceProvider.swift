@@ -20,7 +20,7 @@ public struct CloudResponse<HTTPResult, Failure: Error> {
 public typealias CloudCompletionHandler = (CloudResponse<HTTPResult, Error>) -> Void
 
 /// Cloud refresh acess token handler.
-public typealias CloudRefreshAccessTokenHandler = (((Result<URLCredential, Error>) -> Void)?) -> Void
+public typealias CloudRefreshAccessTokenHandler = ((@escaping (Result<URLCredential, Error>) -> Void)) -> Void
 
 // CloudServiceResponseProcessing
 public protocol CloudServiceResponseProcessing {
@@ -162,10 +162,6 @@ public protocol CloudServiceProvider: AnyObject, CloudServiceResponseProcessing 
 
 // Default implementation of CloudServiceProvider
 extension CloudServiceProvider {
-    
-    public var refreshAccessTokenHandler: (((Result<URLCredential, Error>) -> Void) -> Void)? {
-        return nil
-    }
     
     public var delegate: CloudServiceProviderDelegate? {
         return nil
