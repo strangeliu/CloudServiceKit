@@ -58,7 +58,9 @@ public class CloudServiceConnector: CloudServiceOAuth {
     
     public var responseType: String
     
+#if !os(tvOS)
     public weak var presentationContextProvider: ASWebAuthenticationPresentationContextProviding?
+#endif
     
     /// The appId or appKey of your service.
     let appId: String
