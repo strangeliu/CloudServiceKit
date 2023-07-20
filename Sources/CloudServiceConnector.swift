@@ -188,11 +188,15 @@ public class BaiduPanConnector: CloudServiceConnector {
     /// The OAuth2 url, which is `https://openapi.baidu.com/oauth/2.0/authorize`.
     public override var authorizeUrl: String {
 #if canImport(UIKit)
+        #if os(xrOS)
+        return "https://openapi.baidu.com/oauth/2.0/authorize?display=pad&force_login=1"
+        #else
         if UIScreen.main.traitCollection.userInterfaceIdiom == .pad {
             return "https://openapi.baidu.com/oauth/2.0/authorize?display=pad&force_login=1"
         } else {
             return "https://openapi.baidu.com/oauth/2.0/authorize?display=mobile&force_login=1"
         }
+        #endif
 #else
         return "https://openapi.baidu.com/oauth/2.0/authorize?display=pc&force_login=1"
 #endif
