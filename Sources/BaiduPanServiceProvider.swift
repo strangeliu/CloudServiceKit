@@ -438,6 +438,16 @@ extension BaiduPanServiceProvider: CloudServiceResponseProcessing {
         }
         return false
     }
+    
+    public func isUnauthorizedResponse(_ response: HTTPResult) -> Bool {
+        if response.statusCode == 401 {
+            return true
+        } else if let json = response.json as? [String: Any] {
+            return (json["errno"] as? Int) == -6
+        } else {
+            return false
+        }
+    }
 }
 
 // MARK: - CloudServiceBatching
